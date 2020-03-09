@@ -19,7 +19,7 @@ beta2 = 0.5
 dii = 10          # 距离
 d21 = 100
 d12 = 120
-N0 = 10**(-15)  # 白噪声
+N0 = 10**(-15)      # 白噪声
 band_width = 1e5
 PLii = - (103.4 + 24.2 * np.log10(dii / 1000))
 PL12 = - (103.4 + 24.2 * np.log10(d21 / 1000))
@@ -114,9 +114,9 @@ for vnum in range(len(VV)):
             # 一个时刻t选定一种方案
             sumQ += (Q1 + Q2)
             sumY += (Y1 + Y2)
-            Q1 = max(Q1 - b1_ee, 0) + a1
+            Q1 = max(Q1 - b1_ee, 0) + a1        # ty2 queue
             Q2 = max(Q2 - b2_ee, 0) + a2
-            Y1 = max(Y1 - PHI1, 0) + phi_th
+            Y1 = max(Y1 - PHI1, 0) + phi_th     # ty1 queue
             Y2 = max(Y2 - PHI2, 0) + phi_th
             # print('a1,a2',a1,a2)
             # print('Q1,Q2',Q1,Q2)

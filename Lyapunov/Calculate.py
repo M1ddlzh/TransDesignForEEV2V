@@ -176,32 +176,32 @@ def crosslayer(r1, r2, h11, h12, h21, h22, N, Y1, Y2, Q1, Q2, Z1, Z2, V, pma,phi
 
 r"""
 tempobj, tp1, tp2, tempR1, tempR2 = \
-    NOA(h11, h12, h21, h22, V, Z1, Z2, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
+    NOA(h11, h12, h21, h22, V, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
     phi1, phi2是1，0
 """
 def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1, YY2):
-    epsilon1 = 0.01     # 迭代门限
-    l = (2 ** r1 - 1) * (2 ** r2 - 1) * h12 * h21 / (h11 * h22)     # 论文中的 k 
-    pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + l) / (h21 * (1 - l))   # 需要的最小功率
-    pnot2 = N * ((2 ** r2 - 1) * h12 / h22 + l) / (h12 * (1 - l))
+    epsilon1 = 0.01     # 退出迭代门限
+    k = (2 ** r1 - 1) * (2 ** r2 - 1) * h12 * h21 / (h11 * h22)     
+    pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + k) / (h21 * (1 - k))   # 需要的最小功率, FIXME: N是功率，不是功率密度
+    pnot2 = N * ((2 ** r2 - 1) * h12 / h22 + k) / (h12 * (1 - k))
     # print(B)
-    p_max = np.array([pma,pma])
-    p_min = np.array([0,0])
+    p_max = np.array([pma, pma])
+    p_min = np.array([0, 0])
     # p_max=cp.Parameter
     # print('pnot1,pnot2',pnot1,pnot2)
     # print('p_max', p_max)
 
-    if l < 1 and pnot1 <= pma and pnot2 <= pma:
+    if k < 1 and pnot1 <= pma and pnot2 <= pma:
         I = 0       # 迭代次数
         objNOA = -10000
 
         if r1 > 0:      
-            pt1 = h11 * pma / (h12*(2**r1-1)) - N / h12
+            pt1 = h11 * pma / (h12 * (2 ** r1 - 1)) - N / h12
         else:
             pt1 = pma
 
         if r2 > 0:
-            pt2 = h22 * pma / (h21*(2**r2-1)) - N / h21
+            pt2 = h22 * pma / (h21 * (2 ** r2 - 1)) - N / h21
         else:
             pt2 = pma
 
@@ -219,12 +219,12 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
 
         while True:
             I += 1
-            A = np.array([[-1, h12 * (2 ** r1 - 1) / h11], [h21 * (2 ** r2 - 1) / h22, -1]])
-            B = np.array([-(2 ** r1 - 1) * N / h11, -(2 ** r2 - 1) * N / h22])
-            p = cp.Variable(shape=(2, ), nonneg=True)
+            A = np.array([[-1, h12 * (2 ** r1 - 1) / h11], [h21 * (2 ** r2 - 1) / h22, -1]])    # 2 × 2
+            B = np.array([[-(2 ** r1 - 1) * N / h11], [-(2 ** r2 - 1) * N / h22]])              # 2 × 1
+            p = cp.Variable(shape=(2, 1), nonneg=True)                                          # 1 × 2, np.dot(A, p) - B
             f = (v*alpha1+2*QQ1) * np.log2(math.e) * cp.log(N+h11*p[0]+h12*p[1]) + \
                 (v*alpha2+2*QQ2) * np.log2(math.e) * cp.log(N+h22*p[1]+h21*p[0]) - \
-                (v*eta*beta1) * p[0] - (v*eta*beta2) * p[1] - 2 * ((QQ1*r1-phii1*YY1) + (QQ2*r2-phii2*YY2))
+                (v*eta*beta1) * p[0] - (v*eta*beta2) * p[1] - 2 * ((QQ1*r1-phii1*YY1) + (QQ2*r2-phii2*YY2)) # u_i, v_i = 1, 1
             y1 = N + h12 * pk2
             y2 = N + h21 * pk1
             # print('pk1,pk2',pk1,pk2)
@@ -245,7 +245,7 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             # print('P',type(vectorP),vectorP)
             # objfunc1 = cp.Maximize(f-g-deltaG[0]* vectorP[0]-deltaG[1]* vectorP[1])
             objfunc4 = cp.Maximize(f - g - np.dot(deltaG, vectorP))  
-            constr4 = [p_min <= p, p <= p_max, (np.dot(A, p)-B) <= 0 ]      # 原文公式(21)
+            constr4 = [p_min <= p, p <= p_max, (np.dot(A, p) - B) <= 0 ]      # 原文公式(21)
             prob4 = cp.Problem(objfunc4, constr4)
             prob4.solve(solver='SCS')
             if prob4.status =='optimal' or prob4.status =='optimal_inaccurate':
