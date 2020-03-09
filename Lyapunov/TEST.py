@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pylab as plb
-from Calculate import Pmin,TempP,TempP_EE,obj,obj_EE,NOA,crosslayer
+from Calculate import Pmin, TempP, TempP_EE, obj, obj_EE, NOA, crosslayer
 
 np.random.seed(0)
 
-global R1,R2,R_1,R_2,Rvv_1,fr_r1,fr_r2
+global R1, R2, R_1, R_2, Rvv_1, fr_r1, fr_r2
 
 phi = [[1,1], [1,0], [0,1], [0,0]] # 4个动作
 
@@ -32,42 +32,40 @@ T = 3000    # 3000步
 
 VV=np.arange(2,4,3)     # 能效比在优化目标中的权重
 
-lamda=0.8               # ty2 generate rate
+lamda = 0.8               # ty2 generate rate
 #原1.2 3.2 V1，1，13
-r=[0,0.2]               # ty1 transmiqssion rate
-pmax_dbm=np.arange(30,31,3)     # power, dBm
-pavg_dbm=20
-pavg=(10 ** (pavg_dbm / 10)) / 1000
-pnum=len(pmax_dbm)  # pnum = 1
+r = [0, 0.2]               # ty1 transmission rate
+pmax_dbm = np.arange(30, 31, 3)     # power, dBm
+pavg_dbm = 20
+pavg = (10 ** (pavg_dbm / 10)) / 1000
+pnum = len(pmax_dbm)  # pnum = 1
 
 EE = [[],[],[]] #energy efficiency
 AvgsumPower = [[],[],[]]
 Q = [[],[],[]]      # ty2 queue
 Y = [[],[],[]]      # ty1 queue
-REL=[[],[],[]]      # 实际发没发送，每个slot都发是2，都不发是0，记录平均值
-AvgsumRate=[[],[],[]]
+REL = [[], [], []]      # 实际发没发送，每个slot都发是2，都不发是0，记录平均值
+AvgsumRate = [[], [], []]
 
-power_action=[]
-rate_action=[]
+power_action = []
+rate_action = []
 for vnum in range(len(VV)):
-    V=VV[vnum]
+    V = VV[vnum]
     # print('V',V)
     for a in range(pnum):
-        P_max=pmax_dbm[a]
+        P_max = pmax_dbm[a]
         pmax = (10 ** (P_max / 10)) / 1000      # dBm -> W
         # print('pmax_dbm',P_max)
         Q1 = 0.0 
         Q2 = 0.0
         Y1 = 0.0
         Y2 = 0.0
-        Z1 = 0.0
-        Z2 = 0.0
         eta = 0.000     # ee
         Rv1 = 0.0       # save rate
         Pv1 = 0.0       # save power
-        sumQ= 0.0
-        sumY=0.0
-        rel=0.0         # 存实际选的动作，每一轮求和
+        sumQ = 0.0
+        sumY = 0.0
+        rel = 0.0       # 存实际选的动作，每一轮求和
         for t in range(T):
             # print('t', t)
             h11 = np.random.gamma(2, sigmaii / 2)  
@@ -79,14 +77,14 @@ for vnum in range(len(VV)):
             a2 = np.random.poisson(lam=lamda)
 
             OBJ = -1000     # 先设一个小的值，A、B、C、D四种情况哪种大就选哪种
-            R1=0
-            R2=0
-            P1=0
-            P2=0
-            b1_ee=0         # ty2这一步的发送速率
-            b2_ee=0
-            PHI1=0
-            PHI2=0
+            R1 = 0
+            R2 = 0
+            P1 = 0
+            P2 = 0
+            b1_ee = 0         # ty2这一步的发送速率
+            b2_ee = 0
+            PHI1 = 0
+            PHI2 = 0
 
             for i in range(4):  
                 phi1 = phi[i][0]    # 选到这个任务要发送，那么就=1，否则=0
@@ -94,7 +92,7 @@ for vnum in range(len(VV)):
                 tempr1 = r[phi1]    # 根据Control action的不同，对type-1发送优先级不同，psi=0 时 r=0 else r=0.2
                 tempr2 = r[phi2]
                 tempobj, tp1, tp2, tempR1, tempR2 = \
-                    NOA(h11, h12, h21, h22, V, Z1, Z2, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
+                    NOA(h11, h12, h21, h22, V, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
                 if tempobj > OBJ:
                     OBJ = tempobj
                     P1 = tp1

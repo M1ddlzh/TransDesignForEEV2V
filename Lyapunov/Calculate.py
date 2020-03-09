@@ -1,7 +1,6 @@
 import math
 import cvxpy as cp
 import numpy as np
-import sympy as sp
 # from sympy.abc import x,y
 # import random
 
@@ -180,7 +179,7 @@ tempobj, tp1, tp2, tempR1, tempR2 = \
     NOA(h11, h12, h21, h22, V, Z1, Z2, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
     phi1, phi2是1，0
 """
-def NOA(h11, h12, h21, h22, v, ZZ1, ZZ2, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1, YY2):
+def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1, YY2):
     epsilon1 = 0.01     # 迭代门限
     l = (2 ** r1 - 1) * (2 ** r2 - 1) * h12 * h21 / (h11 * h22)     # 论文中的 k 
     pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + l) / (h21 * (1 - l))   # 需要的最小功率
@@ -225,7 +224,7 @@ def NOA(h11, h12, h21, h22, v, ZZ1, ZZ2, QQ1, QQ2, r1, r2, N, phii1, phii2, pma,
             p = cp.Variable(shape=(2, ), nonneg=True)
             f = (v*alpha1+2*QQ1) * np.log2(math.e) * cp.log(N+h11*p[0]+h12*p[1]) + \
                 (v*alpha2+2*QQ2) * np.log2(math.e) * cp.log(N+h22*p[1]+h21*p[0]) - \
-                (v*eta*beta1+2*ZZ1) * p[0] - (v*eta*beta2+2*ZZ2) * p[1] - 2 * ((QQ1*r1-phii1*YY1) + (QQ2*r2-phii2*YY2))
+                (v*eta*beta1) * p[0] - (v*eta*beta2) * p[1] - 2 * ((QQ1*r1-phii1*YY1) + (QQ2*r2-phii2*YY2))
             y1 = N + h12 * pk2
             y2 = N + h21 * pk1
             # print('pk1,pk2',pk1,pk2)
