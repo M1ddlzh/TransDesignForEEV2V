@@ -1,19 +1,18 @@
-import math
 import cvxpy as cp
 import numpy as np
 # from sympy.abc import x,y
 # import random
 
 
-alpha1=0.5
-alpha2=0.5
-beta1=0.5
-beta2=0.5
-beta0=0
+alpha1 = 0.5
+alpha2 = 0.5
+beta1 = 0.5
+beta2 = 0.5
+beta0 = 0
 epsilon = 0.05
-epsilon1=0.002
-beta10=1
-n=2
+epsilon1 = 0.002
+beta10 = 1
+n = 2
 
 def Pmin(rr1, rr2, delt, h1, h2, N):
     pmi1 = (2**(rr1/delt)-1)*delt*N/h1
@@ -22,29 +21,29 @@ def Pmin(rr1, rr2, delt, h1, h2, N):
 
 
 def TempP_EE(v, Q1, Q2, Z1, Z2, delt, eta, N, h11, h22, pmi1, pmi2, pma):
-    pp1 = (v*alpha1+2*Q1)*delt/(math.log(2)*(2*Z1+v*eta*beta1))-delt*N/h11   
-    pp2 = (1-delt)*((v*alpha2+2*Q2)/((2*Z2+v*eta*beta2)*math.log(2))-N/h22)
+    pp1 = (v*alpha1+2*Q1)*delt/(np.log(2)*(2*Z1+v*eta*beta1))-delt*N/h11   
+    pp2 = (1-delt)*((v*alpha2+2*Q2)/((2*Z2+v*eta*beta2)*np.log(2))-N/h22)
     p11 = min(max(pp1, pmi1), pma)
     p22 = min(max(pp2, pmi2), pma)
     return p11, p22
 
 def obj_EE(v, delt, h11, h22, p1, p2, N, eta, Z1, Z2, Q1, Q2, Y1, Y2, rr1, rr2, phi1, phi2):
-    RR1 = delt*math.log2(1+h11*p1/(delt*N))
-    RR2 = (1-delt)*math.log2(1+h22*p2/((1-delt)*N))
+    RR1 = delt*np.log2(1+h11*p1/(delt*N))
+    RR2 = (1-delt)*np.log2(1+h22*p2/((1-delt)*N))
     Tempobj = v*(alpha1*RR1+alpha2*RR2-eta*beta1*p1-beta2*eta*p2)-2*(Z1*p1+Z2*p2+Q1*rr1+Q2*rr2-Y1*phi1-Y2*phi2)+2*(Q1*RR1+Q2*RR2)
     return Tempobj,RR1,RR2
 
     #####below cross-layer##
 def TempP(v, Q1, Q2, Z1, Z2, delt, N, h11, h22, pmi1, pmi2, pma):
-    pp1=delt*(2*Q1/((v*alpha1+2*Z1)*math.log(2))-N/h11)
-    pp2=(1-delt)*(2*Q2/((v*alpha2+2*Z2)*math.log(2))-N/h22)
+    pp1=delt*(2*Q1/((v*alpha1+2*Z1)*np.log(2))-N/h11)
+    pp2=(1-delt)*(2*Q2/((v*alpha2+2*Z2)*np.log(2))-N/h22)
     p11 = min(max(pp1,pmi1), pma)
     p22 = min(max(pp2,pmi2), pma)
     return p11,p22
 
 def obj(v, delt, h11, h22, p1, p2, N, Z1, Z2, Q1, Q2, Y1, Y2, rr1, rr2, phi1, phi2):
-    RR1 = delt*math.log2(1+h11*p1/(delt*N))
-    RR2 = (1-delt)*math.log2(1+h22*p2/((1-delt)*N))
+    RR1 = delt*np.log2(1+h11*p1/(delt*N))
+    RR2 = (1-delt)*np.log2(1+h22*p2/((1-delt)*N))
     if RR1<rr1:
         b1=0
     else:b1=RR1-rr1
@@ -100,7 +99,7 @@ def crosslayer(r1, r2, h11, h12, h21, h22, N, Y1, Y2, Q1, Q2, Z1, Z2, V, pma,phi
             p = cp.Variable(shape=(2,), nonneg=True)
             f = (V* beta1 + 2 * Z1) * p[0] - V * beta10*phi1 - 2 * Y1*phi1 + 2 * Q1 * r1 + (V * beta2+ 2 * Z2) * p[1] - V \
                 * beta10*phi2 - 2 * Y2*phi2 + 2 * Q2 * r2 \
-                - 2 * Q1 * np.log2(math.e) * cp.log(h11 * p[0] + h12 * p[1] + N) - 2 * Q2 * np.log2(math.e) * cp.log(
+                - 2 * Q1 * np.log2(cp.exp(1)) * cp.log(h11 * p[0] + h12 * p[1] + N) - 2 * Q2 * np.log2(cp.exp(1)) * cp.log(
                 h22 * p[1] + h21 * p[0] + N)
 
             g = -2 * Q1 *np.log2(h12 * pk2 + N) - 2 * Q2 * np.log2(h21 * pk1 + N)  ###
@@ -139,8 +138,8 @@ def crosslayer(r1, r2, h11, h12, h21, h22, N, Y1, Y2, Q1, Q2, Z1, Z2, V, pma,phi
                 crk2= h22 * pp2 / (N + h21 * pp1)
                 # print('crpp1,crpp2',pp1,pp2)
                 # if crk1>=0 and crk2>=0:
-                Rk1 = math.log2(1 + crk1)
-                Rk2 = math.log2(1 +crk2)
+                Rk1 = np.log2(1 + crk1)
+                Rk2 = np.log2(1 +crk2)
                 # else:
                 #     Rk2=0
                 #     Rk1=0
@@ -185,8 +184,8 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
     pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + k) / (h21 * (1 - k))   # 需要的最小功率, FIXME: N是功率，不是功率密度
     pnot2 = N * ((2 ** r2 - 1) * h12 / h22 + k) / (h12 * (1 - k))
     # print(B)
-    p_max = np.array([pma, pma])
-    p_min = np.array([0, 0])
+    p_max = np.array([[pma], [pma]])    # 2 × 1
+    p_min = np.array([[0], [0]])        # 2 × 1
     # p_max=cp.Parameter
     # print('pnot1,pnot2',pnot1,pnot2)
     # print('p_max', p_max)
@@ -221,16 +220,17 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             I += 1
             A = np.array([[-1, h12 * (2 ** r1 - 1) / h11], [h21 * (2 ** r2 - 1) / h22, -1]])    # 2 × 2
             B = np.array([[-(2 ** r1 - 1) * N / h11], [-(2 ** r2 - 1) * N / h22]])              # 2 × 1
-            p = cp.Variable(shape=(2, 1), nonneg=True)                                          # 1 × 2, np.dot(A, p) - B
-            f = (v*alpha1+2*QQ1) * np.log2(math.e) * cp.log(N+h11*p[0]+h12*p[1]) + \
-                (v*alpha2+2*QQ2) * np.log2(math.e) * cp.log(N+h22*p[1]+h21*p[0]) - \
-                (v*eta*beta1) * p[0] - (v*eta*beta2) * p[1] - 2 * ((QQ1*r1-phii1*YY1) + (QQ2*r2-phii2*YY2)) # u_i, v_i = 1, 1
+            p = cp.Variable(shape=(2, 1), nonneg=True)                                          # 2 × 1, np.dot(A, p) - B
+            f = (v * alpha1 + 2 * QQ1) * cp.log(N + h11 * p[0][0] + h12 * p[1][0]) / cp.log(2) + \
+                (v * alpha2 + 2 * QQ2) * cp.log(N + h22 * p[1][0] + h21 * p[0][0]) / cp.log(2) - \
+                (v * eta * beta1) * p[0][0] - (v * eta * beta2) * p[1][0] - \
+                2 * ((QQ1 * r1 - phii1 * YY1) + (QQ2 * r2 - phii2 * YY2)) # u_i, v_i = 1, 1, omit
             y1 = N + h12 * pk2
             y2 = N + h21 * pk1
             # print('pk1,pk2',pk1,pk2)
             # print('N0',N)
             # if y1>(10**(-300)) and y2>(10**(-300)):########
-            g = (v*alpha1+2*QQ1) * np.log2(y1) + (v*alpha2+2*QQ2) * np.log2(y2)
+            g = (v*alpha1 + 2*QQ1) * cp.log(y1) / cp.log(2) + (v*alpha2 + 2*QQ2) * cp.log(y2) / cp.log(2)
             # else:
             #     pp1 = 0
             #     pp2 = 0
@@ -238,19 +238,21 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             #     Rk1 = 0
             #     Rk2 = 0
             #     break
-            vectorP = [p[0] - pk1, p[1] - pk2]
-            deltaG = [(v*alpha2 + 2 * QQ2) * h21 / ((N + h21 * pk1) * cp.log(2)),
-                      (v*alpha1 + 2 * QQ1) * h12 / ((N + h12 * pk2) * cp.log(2))]
+            vectorP = np.array([p[0][0] - pk1, p[1][0] - pk2])
+            deltaG = np.array([(v*alpha2 + 2 * QQ2) * h21 / ((N + h21 * pk1) * cp.log(2)),
+                               (v*alpha1 + 2 * QQ1) * h12 / ((N + h12 * pk2) * cp.log(2))])
             # print('G',type(deltaG),deltaG)
             # print('P',type(vectorP),vectorP)
             # objfunc1 = cp.Maximize(f-g-deltaG[0]* vectorP[0]-deltaG[1]* vectorP[1])
-            objfunc4 = cp.Maximize(f - g - np.dot(deltaG, vectorP))  
-            constr4 = [p_min <= p, p <= p_max, (np.dot(A, p) - B) <= 0 ]      # 原文公式(21)
+            # print(deltaG * vectorP)
+            objfunc4 = cp.Maximize(f - g - (deltaG[0] * vectorP[0] + deltaG[1] * vectorP[1]))  
+            constr4 = [p_min <= p, p <= p_max, (A * p - B) <= 0 ]      # 原文公式(21)
             prob4 = cp.Problem(objfunc4, constr4)
-            prob4.solve(solver='SCS')
-            if prob4.status =='optimal' or prob4.status =='optimal_inaccurate':
-                pp1 = max(p.value[0], 0)
-                pp2 = max(p.value[1], 0)
+            print(prob4)
+            prob4.solve()
+            if prob4.status == 'optimal' or prob4.status == 'optimal_inaccurate':
+                pp1 = max(p.value[0][0], 0)
+                pp2 = max(p.value[1][0], 0)
                 k1 = h11 * pp1 / (N + h12 * pp2)
                 k2 = h22 * pp2 / (N + h21 * pp1)
                 # print('pp1,pp2',pp1,pp2)

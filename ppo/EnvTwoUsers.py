@@ -19,7 +19,7 @@ class EnvTwoUsers():
         self.d12 = 120
         self.N0 = 10**-15   # W/Hz
         self.band_width = 1e5    # Hz, 100kHz
-        self.PLii = -(103.4+24.2*np.log10(self.dii/1000))    # Km, dB
+        self.PLii = -(103.4+24.2*np.log10(self.dii/1000))    # m -> km, PL: dB
         self.PL12 = -(103.4+24.2*np.log10(self.d21/1000))
         self.PL21 = -(103.4+24.2*np.log10(self.d12/1000))
         self.sigmaii = (10**(self.PLii/10))      # 经过大尺度衰落后功率缩小多少倍，期望
@@ -156,7 +156,7 @@ class EnvTwoUsers():
         r2 = r2 * (self.rate_max / 2) + (self.rate_max / 2) + 1e-15
 
         h11, h22, h12, h21 = H
-        p1_w = 10 ** (p1 / 10) / 1000        # 变成 W
+        p1_w = 10 ** (p1 / 10) / 1000        # dBm -> Watt
         p2_w = 10 ** (p2 / 10) / 1000
         I1 = self.band_width * np.log2(1 + h11 * p1_w / (self.band_width * self.N0 + h12 * p2_w)) / 1e3     # bit -> kbit
         I2 = self.band_width * np.log2(1 + h22 * p2_w / (self.band_width * self.N0 + h21 * p1_w)) / 1e3

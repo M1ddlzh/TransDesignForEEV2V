@@ -7,44 +7,43 @@ np.random.seed(0)
 
 global R1, R2, R_1, R_2, Rvv_1, fr_r1, fr_r2
 
-phi = [[1,1], [1,0], [0,1], [0,0]] # 4个动作
+phi = [[1, 1], [1, 0], [0, 1], [0, 0]] # 4个动作
 
-phi_th = 0.9    # ty1门限
+phi_th = 0.9        # ty1门限
 # VV=[2, 10]
-alpha1 = 0.5      # 两个用户的权重
+alpha1 = 0.5        # 两个用户的权重
 alpha2 = 0.5
 beta1 = 0.5
 beta2 = 0.5
 
-dii = 10          # 距离
+dii = 10            # 距离
 d21 = 100
 d12 = 120
-N0 = 10**(-15)      # 白噪声
-band_width = 1e5
+N0 = 10**(-15)          # 白噪声
+band_width = 1e5        # 100 kHz
+N0 = N0 * band_width    # Watt
 PLii = - (103.4 + 24.2 * np.log10(dii / 1000))
 PL12 = - (103.4 + 24.2 * np.log10(d21 / 1000))
 PL21 = - (103.4 + 24.2 * np.log10(d12 / 1000))
-sigmaii = (10**(PLii / 10)) / (band_width * N0)      # TODO: 和ppo的环境改
-sigma12 = (10**(PL12 / 10)) / (band_width * N0)      
-sigma21 = (10**(PL21 / 10)) / (band_width * N0)      
+sigmaii = (10**(PLii / 10))
+sigma12 = (10**(PL12 / 10))    
+sigma21 = (10**(PL21 / 10))      
 
 T = 3000    # 3000步
 
-VV=np.arange(2,4,3)     # 能效比在优化目标中的权重
+VV=np.arange(2,4,3)         # 能效比在优化目标中的权重
 
-lamda = 0.8               # ty2 generate rate
+lamda = 0.8                 # ty2 generate rate
 #原1.2 3.2 V1，1，13
-r = [0, 0.2]               # ty1 transmission rate
+r = [0, 0.2]                # ty1 transmission rate
 pmax_dbm = np.arange(30, 31, 3)     # power, dBm
-pavg_dbm = 20
-pavg = (10 ** (pavg_dbm / 10)) / 1000
 pnum = len(pmax_dbm)  # pnum = 1
 
-EE = [[],[],[]] #energy efficiency
+EE = [[],[],[]]             #energy efficiency
 AvgsumPower = [[],[],[]]
-Q = [[],[],[]]      # ty2 queue
-Y = [[],[],[]]      # ty1 queue
-REL = [[], [], []]      # 实际发没发送，每个slot都发是2，都不发是0，记录平均值
+Q = [[],[],[]]              # ty2 queue
+Y = [[],[],[]]              # ty1 queue
+REL = [[], [], []]          # 实际发没发送，每个slot都发是2，都不发是0，记录平均值
 AvgsumRate = [[], [], []]
 
 power_action = []
