@@ -13,6 +13,7 @@ epsilon = 0.05
 epsilon1 = 0.002
 beta10 = 1
 n = 2
+cpln2 = 0.6931471805599453
 
 def Pmin(rr1, rr2, delt, h1, h2, N):
     pmi1 = (2**(rr1/delt)-1)*delt*N/h1
@@ -221,16 +222,17 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             A = np.array([[-1, h12 * (2 ** r1 - 1) / h11], [h21 * (2 ** r2 - 1) / h22, -1]])    # 2 × 2
             B = np.array([[-(2 ** r1 - 1) * N / h11], [-(2 ** r2 - 1) * N / h22]])              # 2 × 1
             p = cp.Variable(shape=(2, 1), nonneg=True)                                          # 2 × 1, np.dot(A, p) - B
-            f = (v * alpha1 + 2 * QQ1) * cp.log(N + h11 * p[0][0] + h12 * p[1][0]) / cp.log(2) + \
-                (v * alpha2 + 2 * QQ2) * cp.log(N + h22 * p[1][0] + h21 * p[0][0]) / cp.log(2) - \
+            # if use "f = (...) / cp.log(2)", will raise error "Problem does not follow DCP rules.", :(
+            f = (v * alpha1 + 2 * QQ1) * cp.log(N + h11 * p[0][0] + h12 * p[1][0]) / cpln2 + \
+                (v * alpha2 + 2 * QQ2) * cp.log(N + h22 * p[1][0] + h21 * p[0][0]) / cpln2 - \
                 (v * eta * beta1) * p[0][0] - (v * eta * beta2) * p[1][0] - \
-                2 * ((QQ1 * r1 - phii1 * YY1) + (QQ2 * r2 - phii2 * YY2)) # u_i, v_i = 1, 1, omit
+                2 * (QQ1 * r1 - phii1 * YY1 + QQ2 * r2 - phii2 * YY2)                           # u_i, v_i = 1, 1, omit
             y1 = N + h12 * pk2
             y2 = N + h21 * pk1
             # print('pk1,pk2',pk1,pk2)
             # print('N0',N)
             # if y1>(10**(-300)) and y2>(10**(-300)):########
-            g = (v*alpha1 + 2*QQ1) * cp.log(y1) / cp.log(2) + (v*alpha2 + 2*QQ2) * cp.log(y2) / cp.log(2)
+            g = (v * alpha1 + 2 * QQ1) * cp.log(y1) / cp.log(2) + (v * alpha2 + 2 * QQ2) * cp.log(y2) / cp.log(2)
             # else:
             #     pp1 = 0
             #     pp2 = 0
@@ -245,10 +247,10 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             # print('P',type(vectorP),vectorP)
             # objfunc1 = cp.Maximize(f-g-deltaG[0]* vectorP[0]-deltaG[1]* vectorP[1])
             # print(deltaG * vectorP)
-            objfunc4 = cp.Maximize(f - g - (deltaG[0] * vectorP[0] + deltaG[1] * vectorP[1]))  
+            objfunc4 = cp.Maximize(f - g - deltaG[0] * vectorP[0] - deltaG[1] * vectorP[1])  
             constr4 = [p_min <= p, p <= p_max, (A * p - B) <= 0 ]      # 原文公式(21)
             prob4 = cp.Problem(objfunc4, constr4)
-            print(prob4)
+            # print(prob4)
             prob4.solve()
             if prob4.status == 'optimal' or prob4.status == 'optimal_inaccurate':
                 pp1 = max(p.value[0][0], 0)

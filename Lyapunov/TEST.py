@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pylab as plb
+from tqdm import tqdm
 from Calculate import Pmin, TempP, TempP_EE, obj, obj_EE, NOA, crosslayer
 
 np.random.seed(0)
@@ -65,12 +66,13 @@ for vnum in range(len(VV)):
         sumQ = 0.0
         sumY = 0.0
         rel = 0.0       # 存实际选的动作，每一轮求和
-        for t in range(T):
+        for t in tqdm(range(T), ncols = 60):
             # print('t', t)
             h11 = np.random.gamma(2, sigmaii / 2)  
             h22 = np.random.gamma(2, sigmaii / 2)
             h12 = np.random.gamma(2, sigma12 / 2)
             h21 = np.random.gamma(2, sigma21 / 2)
+            # print(h11, h22, h12, h21)
 
             a1 = np.random.poisson(lam=lamda)  # type-2产生速率
             a2 = np.random.poisson(lam=lamda)
