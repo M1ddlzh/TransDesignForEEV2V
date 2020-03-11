@@ -1,7 +1,5 @@
 import cvxpy as cp
 import numpy as np
-# from sympy.abc import x,y
-# import random
 
 
 alpha1 = 0.5
@@ -13,7 +11,7 @@ epsilon = 0.05
 epsilon1 = 0.002
 beta10 = 1
 n = 2
-cpln2 = 0.6931471805599453
+cpln2 = 0.6931471805599453      # ln2 = 0.6931471805599453
 
 def Pmin(rr1, rr2, delt, h1, h2, N):
     pmi1 = (2**(rr1/delt)-1)*delt*N/h1
@@ -174,27 +172,21 @@ def crosslayer(r1, r2, h11, h12, h21, h22, N, Y1, Y2, Q1, Q2, Z1, Z2, V, pma,phi
 
     return objcr, pp1, pp2, Rk1, Rk2
 
-r"""
-tempobj, tp1, tp2, tempR1, tempR2 = \
-    NOA(h11, h12, h21, h22, V, Q1, Q2, tempr1, tempr2, N0, phi1, phi2, pmax, eta, Y1, Y2)
-    phi1, phi2是1，0
-"""
+
 def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1, YY2):
-    epsilon1 = 0.01     # 退出迭代门限
+    epsilon1 = 0.01     # iteration threshold
+
     k = (2 ** r1 - 1) * (2 ** r2 - 1) * h12 * h21 / (h11 * h22)     
-    pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + k) / (h21 * (1 - k))   # 需要的最小功率, FIXME: N是功率，不是功率密度
+    pnot1 = N * ((2 ** r1 - 1) * h21 / h11 + k) / (h21 * (1 - k))       # minimum power required
     pnot2 = N * ((2 ** r2 - 1) * h12 / h22 + k) / (h12 * (1 - k))
-    # print(B)
     p_max = np.array([[pma], [pma]])    # 2 × 1
     p_min = np.array([[0], [0]])        # 2 × 1
-    # p_max=cp.Parameter
-    # print('pnot1,pnot2',pnot1,pnot2)
-    # print('p_max', p_max)
 
     if k < 1 and pnot1 <= pma and pnot2 <= pma:
-        I = 0       # 迭代次数
+        I = 0               # iteration num
         objNOA = -10000
 
+        # initialize pk1, pk2
         if r1 > 0:      
             pt1 = h11 * pma / (h12 * (2 ** r1 - 1)) - N / h12
         else:
@@ -214,51 +206,36 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
         else:
             pk1 = pma
             pk2 = pma
-        # pk1 = pnot1
-        # pk2 = pnot2
 
         while True:
             I += 1
             A = np.array([[-1, h12 * (2 ** r1 - 1) / h11], [h21 * (2 ** r2 - 1) / h22, -1]])    # 2 × 2
             B = np.array([[-(2 ** r1 - 1) * N / h11], [-(2 ** r2 - 1) * N / h22]])              # 2 × 1
             p = cp.Variable(shape=(2, 1), nonneg=True)                                          # 2 × 1, np.dot(A, p) - B
-            # if use "f = (...) / cp.log(2)", will raise error "Problem does not follow DCP rules.", :(
+            # if use "f = (...) / cp.log(2)", will raise error "Problem does not follow DCP rules."
             f = (v * alpha1 + 2 * QQ1) * cp.log(N + h11 * p[0][0] + h12 * p[1][0]) / cpln2 + \
                 (v * alpha2 + 2 * QQ2) * cp.log(N + h22 * p[1][0] + h21 * p[0][0]) / cpln2 - \
                 (v * eta * beta1) * p[0][0] - (v * eta * beta2) * p[1][0] - \
                 2 * (QQ1 * r1 - phii1 * YY1 + QQ2 * r2 - phii2 * YY2)                           # u_i, v_i = 1, 1, omit
             y1 = N + h12 * pk2
             y2 = N + h21 * pk1
-            # print('pk1,pk2',pk1,pk2)
-            # print('N0',N)
-            # if y1>(10**(-300)) and y2>(10**(-300)):########
             g = (v * alpha1 + 2 * QQ1) * cp.log(y1) / cp.log(2) + (v * alpha2 + 2 * QQ2) * cp.log(y2) / cp.log(2)
-            # else:
-            #     pp1 = 0
-            #     pp2 = 0
-            #     objNOA.value = -10000
-            #     Rk1 = 0
-            #     Rk2 = 0
-            #     break
+            
             vectorP = np.array([p[0][0] - pk1, p[1][0] - pk2])
             deltaG = np.array([(v*alpha2 + 2 * QQ2) * h21 / ((N + h21 * pk1) * cp.log(2)),
                                (v*alpha1 + 2 * QQ1) * h12 / ((N + h12 * pk2) * cp.log(2))])
-            # print('G',type(deltaG),deltaG)
-            # print('P',type(vectorP),vectorP)
-            # objfunc1 = cp.Maximize(f-g-deltaG[0]* vectorP[0]-deltaG[1]* vectorP[1])
-            # print(deltaG * vectorP)
+           
             objfunc4 = cp.Maximize(f - g - deltaG[0] * vectorP[0] - deltaG[1] * vectorP[1])  
-            constr4 = [p_min <= p, p <= p_max, (A * p - B) <= 0 ]      # 原文公式(21)
+            constr4 = [p_min <= p, p <= p_max, (A * p - B) <= 0 ]
             prob4 = cp.Problem(objfunc4, constr4)
             # print(prob4)
             prob4.solve()
             if prob4.status == 'optimal' or prob4.status == 'optimal_inaccurate':
                 pp1 = max(p.value[0][0], 0)
                 pp2 = max(p.value[1][0], 0)
-                k1 = h11 * pp1 / (N + h12 * pp2)
+                k1 = h11 * pp1 / (N + h12 * pp2)    # SINR
                 k2 = h22 * pp2 / (N + h21 * pp1)
-                # print('pp1,pp2',pp1,pp2)
-                if k1>=0 and k2>=0:
+                if k1 >= 0 and k2 >= 0:
                     Rk1 = np.log2(1 + k1)
                     Rk2 = np.log2(1 + k2)
                 else:
@@ -267,9 +244,7 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
                     objNOA = prob4.value
                     Rk1 = 0
                     Rk2 = 0
-                # print('pp1,pp2',pp1,pp2)
-                # print('rk1,rk2',Rk1,Rk2)
-                if abs(objNOA-objfunc4.value) <= epsilon1:
+                if abs(objNOA - objfunc4.value) <= epsilon1:
                     objNOA = objfunc4.value
                     break
                 elif I >= 20:
