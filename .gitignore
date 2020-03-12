@@ -7,3 +7,4 @@ fig_result/
 single_fig_result/
 DQN_fig_result/
 logs/
+Lyapunov_results/
