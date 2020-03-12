@@ -229,7 +229,7 @@ def NOA(h11, h12, h21, h22, v, QQ1, QQ2, r1, r2, N, phii1, phii2, pma, eta, YY1,
             constr4 = [p_min <= p, p <= p_max, (A * p - B) <= 0 ]
             prob4 = cp.Problem(objfunc4, constr4)
             # print(prob4)
-            prob4.solve()
+            prob4.solve(solver = cp.SCS)
             if prob4.status == 'optimal' or prob4.status == 'optimal_inaccurate':
                 pp1 = max(p.value[0][0], 0)
                 pp2 = max(p.value[1][0], 0)
