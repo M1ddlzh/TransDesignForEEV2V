@@ -1,31 +1,31 @@
 import os
-from environment import Feedback
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import tensorflow as tf
 import datetime
 import scipy.signal
+from environment import Feedback
 
 tf.set_random_seed(0)
 np.random.seed(0)
 
 
-EP_MAX = 300   # 一共进行多少回合
-EP_LEN = 1000    # 一回合多少步
+EP_MAX = 300                # num of episodes
+EP_LEN = 1000               # time slot of one episode
 GAMMA = 0.95
 GAE_LAM = 0.95
 A_LR = 0.00001
 C_LR = 0.00001
-BATCH = 128      # 对这些数据计算优势函数，更新PPO
-A_UPDATE_STEPS = 10     # 每一组数据更新多次
+BATCH = 128                 # batch size
+A_UPDATE_STEPS = 10         # max num of one ppo update
 C_UPDATE_STEPS = 10
-S_DIM, A_DIM = 5, 2    # 状态、动作维度
-METHOD = [dict(name='kl_pen', kl_target=0.01, lam=0.5),   
-          dict(name='clip', epsilon=0.1, max_lim=3000, kl_target=0.01)][1]       
+S_DIM, A_DIM = 5, 2         # dimension of states and actions
+METHOD = [dict(name='kl_pen', kl_target=0.01, lam=0.5),
+          dict(name='clip', epsilon=0.1, max_lim=3000, kl_target=0.01)][1]        # we use ppo-clip
 
-ty1_gene = 10           # ty1 generate rate 
-A_t = [5, 2, 4, 6, 1]   # ty2 generate rate 
+ty1_gene = 10               # ty1 generate rate 
+A_t = [5, 2, 4, 6, 1]       # ty2 generate rate 
 H_t = []
 while len(H_t) < 7:
     h_t = np.random.rayleigh(3 * 10 ** -7, 1)
@@ -85,17 +85,15 @@ class PPO(object):
                 kl = tf.distributions.kl_divergence(oldpi, pi)
                 self.kl_mean = tf.reduce_mean(kl)
                 self.aloss = -(tf.reduce_mean(surr - self.tflam * kl))
-            else:   # clipping method, find this is better, 增加腾讯绝悟，dual-clipped ppo 
+            else:   # Tencent AL lab，dual-clipped ppo 
                 kl = tf.distributions.kl_divergence(oldpi, pi)
                 self.kl_mean = tf.reduce_mean(kl)
                 self.aloss = -tf.reduce_mean(
-                    tf.where(tf.less(self.tfadv, 0.),     # 动作变成4维了，这里的形状也得变
+                    tf.where(tf.less(self.tfadv, 0.),     
                     tf.maximum(
-                    tf.minimum(surr,
-                    tf.clip_by_value(self.ratio, 1.-METHOD['epsilon'], 1.+METHOD['epsilon'])*self.tfadv),
+                    tf.minimum(surr, tf.clip_by_value(self.ratio, 1.-METHOD['epsilon'], 1.+METHOD['epsilon'])*self.tfadv),
                     METHOD['max_lim'] * self.tfadv),
-                    tf.minimum(surr,
-                    tf.clip_by_value(self.ratio, 1.-METHOD['epsilon'], 1.+METHOD['epsilon'])*self.tfadv)))     
+                    tf.minimum(surr, tf.clip_by_value(self.ratio, 1.-METHOD['epsilon'], 1.+METHOD['epsilon'])*self.tfadv)))     
 
         with tf.variable_scope('atrain'):
             self.atrain_op = tf.train.AdamOptimizer(A_LR).minimize(self.aloss)
@@ -199,7 +197,6 @@ class PPO(object):
         return self.sess.run(self.v, {self.tfs: s})[0, 0]
 
 
-######################################################################################################
 ppo = PPO()
 env = Feedback(r = ty1_gene, A_t = A_t, H_t = H_t, N0 = N0, 
                phi_min = phi_min, phi_0 = phi_0, Q_max = Q_max, Q_limit = Q_limit, Q_infi = Q_infi,
@@ -228,7 +225,7 @@ for epoch in tqdm(range(EP_MAX), ncols = 50):
         s_, reward, end, Q_, sum_R, sum_P = env.get_env_feedback(s, action, Q_pt, slot)     # s and s_ are list
         buffer_s.append(np.array(s))
         buffer_a.append(action)
-        buffer_r.append((reward - 10) / 8)    # TODO: 确定reward的均值和方差
+        buffer_r.append((reward - 10) / 8)   
         ep_r += reward
         all_r.append(reward)
         
@@ -258,8 +255,8 @@ for epoch in tqdm(range(EP_MAX), ncols = 50):
             discounted_r = np.array(discounted_r)[:, np.newaxis]
             gae = np.array(gae)[:, np.newaxis]
             bs, ba, br, badv_gae = np.vstack(buffer_s), np.vstack(buffer_a), \
-                np.hstack((discounted_r, discounted_r)), \
-                np.hstack((gae, gae))         # 重复2次是因为 A_DIM = 2
+                                   np.hstack((discounted_r, discounted_r)), \
+                                   np.hstack((gae, gae))        # because A_DIM = 2 
             ppo.update(bs, ba, br, badv_gae)
             buffer_s, buffer_a, buffer_r = [], [], []
         

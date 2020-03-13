@@ -2,7 +2,7 @@ import cvxpy as cp
 import numpy as np
 
 """
-Windows 10: cvxpy 1.0.21 and Ubuntu 16.04: cvxpy 1.0.27 have tested.
+Windows 10: cvxpy 1.0.21 and Ubuntu 16.04: cvxpy 1.0.27 have been tested.
 """
 
 alpha1 = 0.5

@@ -1,4 +1,7 @@
 """
+The implementation of PPO refers to the code of MorvanZhou, whose project site address is:
+https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow/blob/master/contents/12_Proximal_Policy_Optimization/simply_PPO.py
+
 tensorflow r1.12
 """
 
@@ -8,28 +11,24 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import datetime
 import scipy.signal
-from EnvTwoUsers import EnvTwoUsers
 import os
+from EnvTwoUsers import EnvTwoUsers
 
 tf.set_random_seed(0)
 np.random.seed(0)
 
-EP_MAX = 300   # 一共进行多少回合
-EP_LEN = 1000    # 一回合多少步
+EP_MAX = 300                # num of episodes
+EP_LEN = 1000               # time slot of one episode
 GAMMA = 0.95
 GAE_LAM = 0.95
 A_LR = 0.00001
 C_LR = 0.00001
-BATCH = 128      # 对这些数据计算优势函数，更新PPO
-A_UPDATE_STEPS = 10     # 每一组数据更新多次
+BATCH = 128                 # batch size
+A_UPDATE_STEPS = 10         # max num of one ppo update
 C_UPDATE_STEPS = 10
-S_DIM, A_DIM = 10, 4    # 状态、动作维度
-METHOD = [
-    dict(name='kl_pen', kl_target=0.01, lam=0.5),   
-    # KL penalty, kl_target是期望的目标,lam是KL散度在损失函数中的权重
-    dict(name='clip', epsilon=0.1, max_lim=3000, kl_target=0.01),                 
-    # Clipped surrogate objective, find this is better
-][1]        # choose the method for optimization
+S_DIM, A_DIM = 10, 4        # dimension of states and actions
+METHOD = [dict(name='kl_pen', kl_target=0.01, lam=0.5),
+          dict(name='clip', epsilon=0.1, max_lim=3000, kl_target=0.01)][1]        # we use ppo-clip
 
 
 class PPO(object):
@@ -56,7 +55,7 @@ class PPO(object):
         pi, pi_params = self._build_anet('name_pi', trainable=True)
         oldpi, oldpi_params = self._build_anet('name_oldpi', trainable=False)
         with tf.variable_scope('sample_action'):
-            self.sample_op = tf.squeeze(pi.sample([1]), axis=0)       # choosing action
+            self.sample_op = tf.squeeze(pi.sample([1]), axis=0)       # choose action
         with tf.variable_scope('update_oldpi'):
             self.update_oldpi_op = [oldp.assign(p) for p, oldp in zip(pi_params, oldpi_params)]
 
@@ -72,11 +71,11 @@ class PPO(object):
                 kl = tf.distributions.kl_divergence(oldpi, pi)
                 self.kl_mean = tf.reduce_mean(kl)
                 self.aloss = -(tf.reduce_mean(surr - self.tflam * kl))
-            else:   # clipping method, find this is better, 增加腾讯绝悟，dual-clipped ppo 
+            else:   # Tencent AL lab，dual-clipped ppo 
                 kl = tf.distributions.kl_divergence(oldpi, pi)
                 self.kl_mean = tf.reduce_mean(kl)
                 self.aloss = -tf.reduce_mean(
-                    tf.where(tf.less(self.tfadv, 0.),     # 动作变成4维了，这里的形状也得变
+                    tf.where(tf.less(self.tfadv, 0.),    
                     tf.maximum(
                     tf.minimum(surr,
                     tf.clip_by_value(self.ratio, 1.-METHOD['epsilon'], 1.+METHOD['epsilon'])*self.tfadv),
@@ -227,12 +226,12 @@ channel_capacity_2_smooth = []
 
 for ep in tqdm(range(EP_MAX), ncols = 50):
     s, H, ty1_sum_succ_1, ty1_sum_fail_1, ty1_sum_succ_2, ty1_sum_fail_2, \
-        Q_len_1, Q_len_2, sum_r_1, sum_p_1, sum_r_2, sum_p_2 = env.reset()      # TODO:Q目前是小数
+        Q_len_1, Q_len_2, sum_r_1, sum_p_1, sum_r_2, sum_p_2 = env.reset()      
     buffer_s, buffer_a, buffer_r = [], [], []
     ep_r = 0.
     all_r = []
-    for t in range(EP_LEN):    # in one episode
-        action = ppo.choose_action(s)    # p1, p2, r1, r2 = a
+    for t in range(EP_LEN):                 # in one episode
+        action = ppo.choose_action(s)       # p1, p2, r1, r2 = a
         s_, r, done, H_, \
         ty1_sum_succ_1, ty1_sum_fail_1, ty1_sum_succ_2, ty1_sum_fail_2, \
         Q_len_1, Q_len_2, \
@@ -241,13 +240,13 @@ for ep in tqdm(range(EP_MAX), ncols = 50):
                      Q_len_1, Q_len_2, sum_r_1, sum_p_1, sum_r_2, sum_p_2])    
         buffer_s.append(s)
         buffer_a.append(action)
-        buffer_r.append((r - 11) / 8)    # TODO: 确定reward的均值和方差, ee:-50, ts:+9, q:-50
+        buffer_r.append((r - 11) / 8)       
         ep_r += r
         all_r.append(r)
 
         if (EP_MAX - ep) < 5:
             a = action.copy()
-            a[0] = a[0] * (power_max / 2) + (power_max / 2) + 1e-15       # dBm
+            a[0] = a[0] * (power_max / 2) + (power_max / 2) + 1e-15       # [-1, 1] -> dBm
             a[1] = a[1] * (power_max / 2) + (power_max / 2) + 1e-15
             a[2] = a[2] * (rate_max / 2) + (rate_max / 2) + 1e-15
             a[3] = a[3] * (rate_max / 2) + (rate_max / 2) + 1e-15
@@ -286,21 +285,20 @@ for ep in tqdm(range(EP_MAX), ncols = 50):
             discounted_r.reverse()
             gae.reverse()
             # GAE, two implementation methods
-            gae = scipy.signal.lfilter([1], [1, float(-GAMMA * GAE_LAM)], gae[::-1], axis=0)[::-1]
+            gae = scipy.signal.lfilter([1], [1, float(-GAMMA * GAE_LAM)], gae[::-1], axis=0)[::-1]      # idea from Open AI, Spinning Up
             # for t in reversed(range(len(gae) - 1)):
             #     gae[t] = gae[t] + GAMMA * GAE_LAM * gae[t + 1]
             discounted_r = np.array(discounted_r)[:, np.newaxis]
             gae = np.array(gae)[:, np.newaxis]
             bs, ba, br, badv_gae = np.vstack(buffer_s), np.vstack(buffer_a), \
                 np.hstack((discounted_r, discounted_r, discounted_r, discounted_r)), \
-                np.hstack((gae, gae, gae, gae))         # 重复4次是因为 A_DIM = 4
+                np.hstack((gae, gae, gae, gae))             # A_DIM = 4
             ppo.update(bs, ba, br, badv_gae)
             buffer_s, buffer_a, buffer_r = [], [], []
         s = s_
         H = H_
     # print(np.array(all_r).mean(), np.array(all_r).std())
 
-    # 画图数据
     if ep == 0: 
         total_reward.append(ep_r)
         total_type1_success_1.append(ty1_sum_succ_1 / (ty1_sum_succ_1 + ty1_sum_fail_1))
@@ -310,7 +308,7 @@ for ep in tqdm(range(EP_MAX), ncols = 50):
         total_energy_effi_1.append(energy_effi_1)
         total_energy_effi_2.append(energy_effi_2)
     else: 
-        total_reward.append(total_reward[-1]*0.9 + ep_r*0.1)  # 就是Tensorboard中的平滑函数，一阶IIR滤波器
+        total_reward.append(total_reward[-1]*0.9 + ep_r*0.1)            # first order IIR filter, idea from Tensorboard
         total_type1_success_1.append(total_type1_success_1[-1]*0.9 + 
             ty1_sum_succ_1 / (ty1_sum_succ_1 + ty1_sum_fail_1) * 0.1)
         total_type1_success_2.append(total_type1_success_2[-1]*0.9 +
@@ -437,7 +435,7 @@ for ep in tqdm(range(100), ncols = 50):
         total_energy_effi_1.append(energy_effi_1)
         total_energy_effi_2.append(energy_effi_2)
     else: 
-        total_reward.append(total_reward[-1]*0.9 + ep_r*0.1)  # 就是Tensorboard中的平滑函数，一阶IIR滤波器
+        total_reward.append(total_reward[-1]*0.9 + ep_r*0.1)  
         total_type1_success_1.append(total_type1_success_1[-1]*0.9 + 
             ty1_sum_succ_1 / (ty1_sum_succ_1 + ty1_sum_fail_1) * 0.1)
         total_type1_success_2.append(total_type1_success_2[-1]*0.9 +

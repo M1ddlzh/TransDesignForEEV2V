@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-dii = 10        # m
+dii = 10            # m
 d21 = 100
 d12 = 120
-n0 = 10**-15    # W/Hz
+n0 = 10**-15        # W/Hz
 band_width = 1e5    # Hz
 
 plii = -(103.4+24.2*np.log10(dii/1000))     # Km, dB
@@ -12,7 +12,7 @@ pl12 = -(103.4+24.2*np.log10(d21/1000))
 pl21 = -(103.4+24.2*np.log10(d12/1000))
 print(plii, pl12, pl21)
 
-sigmaii = (10**(plii/10))   # 经过大尺度衰落后功率缩小多少倍，期望
+sigmaii = (10**(plii/10))                   # 经过大尺度衰落后功率缩小多少倍，期望
 sigma12 = (10**(pl12/10))
 sigma21 = (10**(pl21/10))
 print(sigmaii, sigma12, sigma21)

@@ -8,37 +8,19 @@ sum_R = 0
 sum_phi = 0
 reward = 0
 
-alpha = 0.5  # 能效
-beta = 1  # 成功率 1.3 1.2265
-gamma = 1  # 队列长度 1.35 1.4
+alpha = 0.5     # energy efficiency weight
+beta = 1        # transmission success weight
+gamma = 1       # queue length weight
 
 class Feedback:
     """
     single users pair environment
     """
-    def __init__(self,
-                 r,
-                 A_t,
-                 H_t,
-                 N0,
-                 phi_min,
-                 phi_0,
-                 Q_max,
-                 Q_limit,
-                 Q_infi,
-                 K_1,
-                 K_2,
-                 K_3,
-                 K_4,
-                 n_ts,
-                 n_q,
-                 one_train
-                 ):
-        super(Feedback, self).__init__()
+    def __init__(self, r, A_t, H_t, N0, phi_min, phi_0, Q_max, Q_limit, Q_infi, 
+                 K_1, K_2, K_3, K_4, n_ts, n_q, one_train):
         self.r = r
         self.A_t = A_t
         self.H_t = H_t
-
         self.N0 = N0
         self.phi_min = phi_min
         self.phi_0 = phi_0
@@ -62,8 +44,7 @@ class Feedback:
     
     def get_reward(self, sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, 
                     s_m_1_nt, s_m_2_t):
-        ######################################################################
-        # 能效比奖励归一化
+        # ee reward
         r_ee = sigma_m_nt * r_nt - sum_R_nt / sum_P_nt * p_nt
 
         r_ee_min = - self.power_max
@@ -73,8 +54,7 @@ class Feedback:
         else:
             r_ee_norma = - r_ee / r_ee_min
 
-        ######################################################################
-        # type 1成功率奖励归一化
+        # ty1 reward
         if s_m_1_nt < self.phi_min:
             r_ts = - 100
         elif self.phi_min <= s_m_1_nt < self.phi_0:
@@ -89,8 +69,7 @@ class Feedback:
         else:
             r_ts_norma = - r_ts / r_ts_min
 
-        ######################################################################
-        # 队列奖励归一化
+        # ty2 reward
         if s_m_2_t < self.Q_max:
             r_q = -0.5 * s_m_2_t + 10
         elif self.Q_max < s_m_2_t < self.Q_infi:
@@ -102,8 +81,6 @@ class Feedback:
             r_q_norma = r_q / 10
         else:
             r_q_norma = r_q / 40
-        # print('Reward q length', r_q)
-        ######################################################################
 
         reward = alpha * r_ee_norma + beta * r_ts_norma + gamma * r_q_norma
         # print('Sub reward', alpha * r_ee_norma, beta * r_ts_norma, gamma * r_q_norma)
@@ -114,8 +91,6 @@ class Feedback:
 
     def get_env_feedback(self, s, a, Q_pt, num_slot):
         global sum_P, sum_R, sum_phi, reward
-        # print("sum_P_t:", sum_P)
-        # print("sum_R_t:", sum_R)
 
         current = s
         s_m_2_t = current[1]            # max(Q_pt - b_t, 0) + a_t
@@ -124,8 +99,6 @@ class Feedback:
         next_state = []
         Q_t = 0
 
-        # cond_h = np.random.uniform()
-        # print("cond_h:", cond_h)
         if num_slot != self.one_train:
             bad_condition = False
             if h_t == self.H_t[0]:
@@ -150,42 +123,24 @@ class Feedback:
         p_nt = p_nt * (self.power_max / 2) + (self.power_max / 2) + 1e-15       # [-1, 1] -> Watt
         r_nt = r_nt * (self.rate_max / 2) + (self.rate_max / 2) + 1e-15
 
-        # if r_nt_type1 == 10:    # TODO: 当传输速率小于信道容量且大于ty1速率时，是否一定传输ty1，225行
-        #     sigma_nt = 1
-        # else:
-        #     sigma_nt = 2
-        sigma_nt = 1
+        sigma_nt = 1        # if channel capacity > ty1 rate, than ty1 messages must be transferred
 
         sum_P += p_nt
         sum_P_nt = sum_P
 
         i_nt = 10 * math.log((1 + p_nt * h_t ** 2 / self.N0), 2)    # band width = 10 kHz, I -> kbps, 14~42kbps
-        # print("I_t", i_t)
         
-        a_nt = np.random.choice(self.A_t)   # type2产生速率
+        a_nt = np.random.choice(self.A_t)   # type2 rate
 
         # transfer failed
         if r_nt > i_nt:
-            # print("r_t > i_t")
             sum_phi += 0
             sum_phi_nt = sum_phi
             avrg_phi_nt = round(sum_phi_nt / num_slot, 4)
-            # print(avrg_phi_nt)
-
             s_m_1_nt = avrg_phi_nt
-
             b_nt = 0
             s_m_2_nt = max(Q_pt - b_nt, 0) + a_nt
-            
-            # print("b_t", b_nt)
-            # print("a_t", a_nt)
-            """
-            if s_m_2_nt > self.Q_max:
-                s_m_2_nt = self.Q_max + 100
-            """
-            
             Q_t = s_m_2_nt
-
             sigma_m_1_nt = 0
             sigma_m_2_nt = 0
             next_state = [s_m_1_nt, s_m_2_nt, h_nt, sigma_m_1_nt, sigma_m_2_nt]
@@ -193,24 +148,17 @@ class Feedback:
             sigma_m_nt = 0
             sum_R += sigma_m_nt * r_nt
             sum_R_nt = sum_R
-        
-            reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, 
-                s_m_1_nt, s_m_2_t)
+            reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, s_m_1_nt, s_m_2_t)
 
         # transfer ty2 only
         elif (r_nt <= i_nt) and (r_nt < self.r):
-            # print("r_t<=i_t, r_t<r")
             sum_phi += 0
             sum_phi_nt = sum_phi
             avrg_phi_nt = round(sum_phi_nt / num_slot, 4)
-            # print(avrg_phi_nt)
-
             s_m_1_nt = avrg_phi_nt
-
             b_nt = r_nt
             s_m_2_nt = max(Q_pt - b_nt, 0) + a_nt
             Q_t = s_m_2_nt
-
             sigma_m_1_nt = 0
             sigma_m_2_nt = 1
             next_state = [s_m_1_nt, s_m_2_nt, h_nt, sigma_m_1_nt, sigma_m_2_nt]
@@ -218,25 +166,18 @@ class Feedback:
             sigma_m_nt = 1
             sum_R += sigma_m_nt * r_nt
             sum_R_nt = sum_R
-
-            reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, 
-                s_m_1_nt, s_m_2_t)
+            reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, s_m_1_nt, s_m_2_t)
 
         elif self.r <= r_nt <= i_nt:
             # transfer ty1 and ty2 both
             if sigma_nt == 1:
-                # print("r <= r_t <= i_t, sigma_t = 1")
                 sum_phi += 1
                 sum_phi_nt = sum_phi
                 avrg_phi_nt = round(sum_phi_nt / num_slot, 4)
-                # print(avrg_phi_nt)
-
                 s_m_1_nt = avrg_phi_nt
-
                 b_nt = r_nt - self.r
                 s_m_2_nt = max(Q_pt - b_nt, 0) + a_nt
                 Q_t = s_m_2_nt
-
                 sigma_m_1_nt = 1
                 sigma_m_2_nt = 1
                 next_state = [s_m_1_nt, s_m_2_nt, h_nt, sigma_m_1_nt, sigma_m_2_nt]
@@ -244,24 +185,17 @@ class Feedback:
                 sigma_m_nt = 1
                 sum_R += sigma_m_nt * r_nt
                 sum_R_nt = sum_R
-
-                reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, 
-                    s_m_1_nt, s_m_2_t)
+                reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, s_m_1_nt, s_m_2_t)
 
             # still transfer ty2 only
             elif sigma_nt == 2:
-                # print("r <= r_t <= i_t, sigma_t = 2")
                 sum_phi += 0
                 sum_phi_nt = sum_phi
                 avrg_phi_nt = round(sum_phi_nt / num_slot, 4)
-                # print(avrg_phi_nt)
-
                 s_m_1_nt = avrg_phi_nt
-
                 b_nt = r_nt
                 s_m_2_nt = max(Q_pt - b_nt, 0) + a_nt
                 Q_t = s_m_2_nt
-
                 sigma_m_1_nt = 0
                 sigma_m_2_nt = 1
                 next_state = [s_m_1_nt, s_m_2_nt, h_nt, sigma_m_1_nt, sigma_m_2_nt]
@@ -269,9 +203,7 @@ class Feedback:
                 sigma_m_nt = 1
                 sum_R += sigma_m_nt * r_nt
                 sum_R_nt = sum_R
-
-                reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, 
-                    s_m_1_nt, s_m_2_t)
+                reward = self.get_reward(sigma_m_nt, r_nt, sum_R_nt, sum_P_nt, p_nt, s_m_1_nt, s_m_2_t)
 
         return next_state, reward, bad_condition, Q_t, sum_R, sum_P
 
