@@ -1,5 +1,5 @@
 # Deep Reinforcement Learning-aided Transmission Design for Multi-user V2V Networks
---Under review, IEEE WCNC 2021.
+IEEE WCNC 2021.
 
 This repository stores the source code of the paper "Deep Reinforcement Learning-aided Transmission Design for Multi-user V2V Networks".
 
